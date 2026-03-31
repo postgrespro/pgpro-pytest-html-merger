@@ -1,3 +1,5 @@
+[![PyPI package version](https://badge.fury.io/py/pgpro-pytest-html-merger.svg)](https://badge.fury.io/py/pgpro-pytest-html-merger)
+
 # pgpro-pytest-html-merger
 A professional tool to merge multiple pytest-html reports into a single, consistent HTML report. Developed and maintained by Postgres Professional.
 
