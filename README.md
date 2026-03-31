@@ -1,3 +1,4 @@
+[![CI Status](https://img.shields.io/github/actions/workflow/status/postgrespro/pgpro-pytest-html-merger/.github/workflows/ci.yml?label=CI)](https://github.com/postgrespro/pgpro-pytest-html-merger/actions/workflows/ci.yml)
 [![PyPI package version](https://badge.fury.io/py/pgpro-pytest-html-merger.svg)](https://badge.fury.io/py/pgpro-pytest-html-merger)
 
 # pgpro-pytest-html-merger
