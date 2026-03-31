@@ -10,7 +10,7 @@ A professional tool to merge multiple pytest-html reports into a single, consist
 ## Installation
 You can install the package directly from the repository (until it's published to PyPI):
 ```bash
-pip install git+https://github.com
+pip install pgpro-pytest-html-merger
 ```
 
 ## Usage
