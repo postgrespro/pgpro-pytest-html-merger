@@ -18,7 +18,7 @@ log = logging.getLogger(__name__)
 def parse_arguments():
     command_parser = argparse.ArgumentParser(
         description="A professional tool to merge multiple pytest-html reports into a single one with consistent metadata.",  # noqa: E501
-        epilog="Example: pgpro.pytest-html-merger -i ./reports -o summary.html --title 'Nightly Build'",  # noqa: E501
+        epilog="Example: pgpro-pytest-html-merger -i ./reports -o summary.html --title 'Nightly Build'",  # noqa: E501
     )
 
     command_parser.add_argument(

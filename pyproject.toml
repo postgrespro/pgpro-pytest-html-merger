@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pgpro-pytest-html-merger"
 version = "0.2.0"
-description = "A tool to merge multiple pytest-html reports into a single one"
+description = "A professional tool to merge multiple pytest-html reports into a single one with consistent metadata"
 readme = "README.md"
 requires-python = ">=3.8"
 license = "MIT"
@@ -20,12 +20,10 @@ dependencies = [
 ]
 
 [project.scripts]
-# Теперь точка входа выглядит короче и логичнее
 pgpro-pytest-html-merger = "pgpro_pytest_html_merger.__main__:cli"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-# Указываем новое имя папки
 include = ["pgpro_pytest_html_merger*"]
 
 [tool.pytest.ini_options]
