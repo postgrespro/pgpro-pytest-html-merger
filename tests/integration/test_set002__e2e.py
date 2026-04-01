@@ -900,4 +900,116 @@ def test_error(boom): pass
     return
 
 
+# ------------------------------------------------------------------------
+def test_e2e_006__merge_conflicting_metadata():
+    """
+    E2E test to verify that conflicting metadata keys
+    are merged using our new {id} logic.
+    """
+    ws = E2EWorkspace(prefix="e2e_conflict_")
+    try:
+        # 1. Generate first report with Python 3.8
+        ws.generate_report(
+            "run_alpha",
+            "def test_1(): assert True",
+            metadata={"Python": "3.8", "OS": "Linux"},
+        )
+
+        # 2. Generate second report with Python 3.9
+        ws.generate_report(
+            "run_beta",
+            "def test_2(): assert True",
+            metadata={"Python": "3.9", "OS": "Linux"},
+        )
+
+        # 3. Run the merger
+        output_html = ws.root / "merged_conflicts.html"
+        result = ws.run_merger(["-i", str(ws.reports_dir), "-o", str(output_html)])
+
+        # 4. Critical Checks
+        assert result.returncode == 0
+        assert output_html.exists()
+        content = output_html.read_text()
+
+        # Check unique key (OS was the same in both, so it should stay as 'OS')
+        assert "OS" in content
+        assert "Linux" in content
+
+        # Check conflicting key (Python had different values)
+        # Based on our stable numbering, they should get {1} and {2}
+        assert "Python {1}" in content
+        assert "3.8" in content
+        assert "Python {2}" in content
+        assert "3.9" in content
+
+        # Check summary
+        assert "2 tests took" in content
+
+    finally:
+        pass
+
+    ws.cleanup()
+    return
+
+
+# ------------------------------------------------------------------------
+def test_e2e_007__merge_nested_metadata_extension():
+    """
+    Verify that nested dictionaries (like PgProBackup or Packages)
+    are extended, not overwritten, when merging two reports.
+    """
+    ws = E2EWorkspace(prefix="e2e_nested_merge_")
+    try:
+        # 1. Report from Test A: Basic environment and some packages
+        # We use a pytest_configure hook to inject complex dicts into metadata
+        code_a = """
+from pytest_metadata.plugin import metadata_key as pytest_metadata_key
+
+def test_a(request):
+    test_report_metadata = request.config.stash[pytest_metadata_key]
+    test_report_metadata['Packages'] = {'pytest': '8.3.4', 'pluggy': '1.5.0'}
+    test_report_metadata['PgProBackup'] = {'Binary': 'pg_probackup3', 'Version': '3.3.0'}
+    assert True
+"""
+        ws.generate_report("run_a", code_a)
+
+        # 2. Report from Test B: Adding 'testgres' and extra backup info
+        code_b = """
+from pytest_metadata.plugin import metadata_key as pytest_metadata_key
+
+def test_b(request):
+    test_report_metadata = request.config.stash[pytest_metadata_key]
+    test_report_metadata['Packages'] = {'testgres': '1.10.0'}
+    test_report_metadata['PgProBackup'] = {'Src Commit ID': '70fa46d35b12a'}
+    assert True
+"""
+        ws.generate_report("run_b", code_b)
+
+        # 3. Merge them
+        output_html = ws.root / "merged_complex.html"
+        result = ws.run_merger(["-i", str(ws.reports_dir), "-o", str(output_html)])
+
+        # 4. Assertions
+        assert result.returncode == 0
+        content = output_html.read_text()
+
+        # Check Packages: must contain all three!
+        assert "pytest" in content
+        assert "8.3.4" in content
+        assert "testgres" in content
+        assert "1.10.0" in content
+
+        # Check PgProBackup: must be merged into one block
+        assert "Binary" in content
+        assert "pg_probackup3" in content
+        assert "Src Commit ID" in content
+        assert "70fa46d35b12a" in content
+
+    finally:
+        pass
+
+    ws.cleanup()
+    return
+
+
 # //////////////////////////////////////////////////////////////////////////////
