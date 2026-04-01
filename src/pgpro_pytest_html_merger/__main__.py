@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 import bs4
 import copy
@@ -71,22 +73,397 @@ def parse_arguments():
     return options
 
 
+class ErrMsgGenerator:
+    @staticmethod
+    def gen_msg__env_prop_is_none(name: str):
+        assert type(name) is str
+        return "Env property [{}] is None.".format(
+            name,
+        )
+
+    # --------------------------------------------------------------------
+    @staticmethod
+    def gen_msg__unsupported_env_prop_type(name: str, type_name: str):
+        assert type(name) is str
+        assert type(type_name) is str
+        return "Unsupported env property [{}] type [{}].".format(
+            name,
+            type_name,
+        )
+
+    # --------------------------------------------------------------------
+    @staticmethod
+    def gen_msg__unknown_env_prop_type(name: str, type_name: str):
+        assert type(name) is str
+        assert type(type_name) is str
+        return "Unknown env property [{}] type [{}].".format(
+            name,
+            type_name,
+        )
+
+
+class PytestReportEnvPropID:
+    _part1: int
+    _part2: typing.Optional[int]
+
+    def __init__(self, part1: int, part2: typing.Optional[int]):
+        assert type(part1) is int
+        assert part2 is None or type(part2) is int
+        self._part1 = part1
+        self._part2 = part2
+        return
+
+    @property
+    def part1(self) -> int:
+        assert type(self._part1) is int
+        return self._part1
+
+    @property
+    def part2(self) -> typing.Optional[int]:
+        assert self._part2 is None or type(self._part2) is int
+        return self._part2
+
+    def __hash__(self) -> int:
+        """
+        Make the object hashable so it can be used as a dictionary key.
+        We hash a tuple of its parts.
+        """
+        return hash((self._part1, self._part2))
+
+    def __eq__(self, other: typing.Any) -> bool:
+        """Check equality: both parts must match"""
+        if not isinstance(other, PytestReportEnvPropID):
+            return False
+        return self.part1 == other.part1 and self.part2 == other.part2
+
+    def __lt__(self, other: PytestReportEnvPropID) -> bool:
+        """
+        Comparison logic for sorting:
+        1. Compare part1
+        2. If part1 is equal, compare part2 (treating None as smaller than any int)
+        """
+        assert type(other) is PytestReportEnvPropID
+
+        if self.part1 != other.part1:
+            return self.part1 < other.part1
+
+        # Handle None in part2 for sorting
+        if self.part2 is None and other.part2 is not None:
+            return True
+        if self.part2 is not None and other.part2 is None:
+            return False
+        if self.part2 is None and other.part2 is None:
+            return False
+
+        assert type(self.part2) is int
+        assert type(other.part2) is int
+
+        return self.part2 < other.part2
+
+    def __repr__(self) -> str:
+        """Debug representation for our mega-project"""
+        return "PytestReportEnvPropID(part1={}, part2={})".format(
+            self.part1,
+            self.part2,
+        )
+
+
+class PytestReportEnvProp:
+    _name: str
+    _id: PytestReportEnvPropID
+    _value: typing.Any
+
+    def __init__(self, name: str, id: PytestReportEnvPropID, value: typing.Any):
+        assert type(name) is str
+        assert type(id) is PytestReportEnvPropID
+        assert value is not None
+        assert __class__.helper__is_valid_value_type(
+            value
+        ), "name: {}, type: {}".format(name, type(value).__name__)
+        self._name = name
+        self._id = id
+        self._value = value
+        return
+
+    @property
+    def name(self) -> str:
+        assert type(self._name) is str
+        return self._name
+
+    @property
+    def id(self) -> PytestReportEnvPropID:
+        assert type(self._id) is PytestReportEnvPropID
+        return self._id
+
+    @property
+    def value(self) -> typing.Any:
+        assert __class__.helper__is_valid_value_type(self._value)
+        return self._value
+
+    @staticmethod
+    def helper__is_valid_value_type(value: typing.Any):
+        if type(value) is str:
+            return True
+        if type(value) is PytestReportEnvPropList:
+            return True
+        return False
+
+
+class PytestReportEnvPropList:
+    m_items: typing.List[PytestReportEnvProp]
+
+    def __init__(self):
+        self.m_items = []
+        return
+
+    @staticmethod
+    def create(
+        report_id: int, env: typing.Dict[str, typing.Any]
+    ) -> PytestReportEnvPropList:
+        assert type(report_id) is int
+        assert type(env) is dict
+        propList = PytestReportEnvPropList()
+
+        for n, v in env.items():
+            assert type(n) is str
+
+            if v is None:
+                raise RuntimeError(ErrMsgGenerator.gen_msg__env_prop_is_none(n))
+
+            if type(v) is str:
+                v2 = v
+            elif type(v) is dict:
+                v2 = PytestReportEnvPropList.create(report_id, v)
+            else:
+                raise RuntimeError(
+                    ErrMsgGenerator.gen_msg__unsupported_env_prop_type(
+                        n,
+                        type(v).__name__,
+                    )
+                )
+            assert v2 is not None
+            name, id_part2 = __class__.helper__parse_identity(n)
+
+            propList.helper_add(
+                name,
+                PytestReportEnvPropID(report_id, id_part2),
+                v2,
+            )
+            continue
+
+        return propList
+
+    def build_dict(self) -> typing.Dict[str, typing.Any]:
+        ctx = __class__.tagBuildCtx()
+        self.helper__build_ids(ctx)
+
+        # --- Stable numbering logic ---
+        # Sort all found IDs to ensure {1}, {2} etc. are always consistent
+        sorted_ids = sorted(ctx.ids.keys())
+        for i, ident in enumerate(sorted_ids, start=1):
+            ctx.ids[ident] = i
+
+        return self.helper__build_dict(ctx)
+
+    class tagBuildCtx:
+        ids: typing.Dict[PytestReportEnvPropID, int]
+
+        def __init__(self):
+            self.ids = {}
+            return
+
+    def helper__build_ids(self, ctx: tagBuildCtx) -> None:
+        assert type(ctx) is __class__.tagBuildCtx
+        for prop in self.m_items:
+            # For stable numbering, we'll sort them in build_dict before assigning numbers
+            ctx.ids[prop.id] = 0
+            if type(prop.value) is PytestReportEnvPropList:
+                prop.value.helper__build_ids(ctx)
+            continue
+        return
+
+    def helper__build_dict(self, ctx: tagBuildCtx) -> typing.Dict[str, typing.Any]:
+        assert type(ctx) is __class__.tagBuildCtx
+
+        names: typing.Dict[str, typing.Set[PytestReportEnvPropID]] = {}
+
+        for prop in self.m_items:
+            assert type(prop) is PytestReportEnvProp
+            entries: typing.Set[PytestReportEnvPropID] = names.get(prop.name, set())
+            assert type(entries) is set
+            entries.add(prop.id)
+            names[prop.name] = entries
+            continue
+
+        result: typing.Dict[str, typing.Any] = {}
+
+        for prop in self.m_items:
+            assert type(prop) is PytestReportEnvProp
+
+            if len(names[prop.name]) == 1:
+                name = prop.name
+            else:
+                name = "{} {{{}}}".format(prop.name, ctx.ids[prop.id])
+
+            if type(prop.value) is str:
+                value = prop.value
+            elif type(prop.value) is PytestReportEnvPropList:
+                value = prop.value.helper__build_dict(ctx)
+            else:
+                raise RuntimeError(
+                    ErrMsgGenerator.gen_msg__unknown_env_prop_type(
+                        prop.name,
+                        type(prop.value).__name__,
+                    )
+                )
+
+            assert value is not None
+            result[name] = value
+            continue
+
+        return result
+
+    @staticmethod
+    def helper__parse_identity(text: str) -> typing.Tuple[str, typing.Optional[int]]:
+        """
+        Parses a string in the format 'name {123}'.
+        The id must be a numeric value.
+
+        Compatible with Python 3.8+
+        """
+        # Regex breakdown:
+        # ^(?P<name>.+?)  - Capture 'name' (non-greedy)
+        # \s*             - Optional whitespace before the bracket
+        # \{              - Open bracket
+        # \s*(?P<id>\d+)\s* - Capture only digits, allowing optional spaces inside {}
+        # \}              - Close bracket
+        # $               - End of string
+        pattern = r"^(?P<name>.+?)\s*\{\s*(?P<id>\d+)\s*\}$"
+
+        stripped_text = text.strip()
+        match = re.match(pattern, stripped_text)
+
+        if match:
+            name = match.group("name").strip()
+            # Convert to int since we guaranteed it's digits
+            numeric_id = int(match.group("id"))
+            return name, numeric_id
+
+        # Fallback: whole string as name, ID as None
+        return stripped_text, None
+
+    def helper_add(
+        self, name: str, id: PytestReportEnvPropID, value: typing.Any
+    ) -> PytestReportEnvPropList:
+        assert type(self.m_items) is list
+        self.m_items.append(PytestReportEnvProp(name, id, value))
+        return self
+
+
+class PytestReportEnvAggregator:
+    _result: PytestReportEnvPropList
+    _index: typing.Dict[str, typing.List[typing.Tuple[int, PytestReportEnvProp]]]
+
+    # --------------------------------------------------------------------
+    def __init__(self):
+        self._result = PytestReportEnvPropList()
+        self._index = {}
+        return
+
+    # --------------------------------------------------------------------
+    @property
+    def result(self) -> PytestReportEnvPropList:
+        assert type(self._result) is PytestReportEnvPropList
+        return self._result
+
+    # --------------------------------------------------------------------
+    def add(self, list: PytestReportEnvPropList) -> None:
+        assert type(list) is PytestReportEnvPropList
+
+        for prop in list.m_items:
+            assert type(prop) is PytestReportEnvProp
+            self.helper__add_prop(prop)
+            continue
+        return
+
+    # --------------------------------------------------------------------
+    def helper__add_prop(self, prop: PytestReportEnvProp) -> None:
+        """
+        Logic for merging properties:
+        - If string values are identical: skip.
+        - If both are lists: merge recursively and update existing.
+        - If types are mixed or values differ: add as a new property.
+        """
+        assert type(prop) is PytestReportEnvProp
+        entries = self._index.get(prop.name, [])
+
+        for i_entry in range(len(entries)):
+            entry = entries[i_entry]
+            assert type(entry) is tuple
+            assert len(entry) == 2
+            assert type(entry[0]) is int
+            assert type(entry[1]) is PytestReportEnvProp
+
+            cp = entry[1]
+            assert type(cp) is PytestReportEnvProp
+
+            assert self._result.m_items[entry[0]] is cp
+
+            # Case 1: Simple strings
+            if type(prop.value) is str:
+                if type(cp.value) is str:
+                    if prop.value == cp.value:
+                        return  # Already exists, skip
+                continue
+
+            # Case 2: Nested lists
+            if type(prop.value) is PytestReportEnvPropList:
+                if type(cp.value) is PytestReportEnvPropList:
+                    # Recursive merge
+                    sub_aggregator = PytestReportEnvAggregator()
+                    sub_aggregator.add(cp.value)
+                    sub_aggregator.add(prop.value)
+                    # This updates the object both in index and in _result.m_items
+                    new_p = PytestReportEnvProp(cp.name, cp.id, sub_aggregator._result)
+                    entries[i_entry] = (entry[0], new_p)
+                    self._result.m_items[entry[0]] = new_p
+                    return
+                continue
+
+            # Case 3: If we reach here with an unknown type, raise error
+            # as requested in our mega-project style.
+            raise RuntimeError(
+                ErrMsgGenerator.gen_msg__unknown_env_prop_type(
+                    prop.name, type(prop.value).__name__
+                )
+            )
+
+        # If no match found, append as a new property
+        entries.append((len(self._result.m_items), prop))
+        self._index[prop.name] = entries
+        self._result.m_items.append(prop)
+        assert self._result.m_items[entries[-1][0]] is entries[-1][1]
+        return
+
+
 class PytestHTMLReportMerger:
     C_MININAL_PYTEST_HTML_VERSION = "4.0.2"
 
+    _report_count: int
     _summary_count: int
     _summary_duration: float
     _summary_outcome: typing.Dict[str, int]
     _summary_tests: typing.Dict[str, typing.Any]
-    _summary_envs: typing.Dict[str, typing.Any]
+    _summary_envs: PytestReportEnvAggregator
 
     def __init__(self):
         self.base = None
+        self._report_count = 0
         self._summary_count = 0
         self._summary_duration = 0.0
         self._summary_outcome = {}
         self._summary_tests = {}
-        self._summary_envs = {}
+        self._summary_envs = PytestReportEnvAggregator()
         return
 
     @staticmethod
@@ -194,6 +571,8 @@ class PytestHTMLReportMerger:
         return
 
     def process_report(self, report_path):
+        self._report_count += 1
+
         html_doc = ""
         with open(report_path, "r") as f:
             html_doc = f.read()
@@ -243,7 +622,11 @@ class PytestHTMLReportMerger:
             continue
 
         # Update envs
-        self._summary_envs.update(report_data.get("environment", {}))
+        prop_list = PytestReportEnvPropList.create(
+            self._report_count,
+            report_data.get("environment", {}),
+        )
+        self._summary_envs.add(prop_list)
         return
 
     def write_report(self, report_path, report_title):
@@ -321,7 +704,7 @@ class PytestHTMLReportMerger:
         base_data["title"] = report_title
 
         base_data["tests"] = self._summary_tests
-        base_data["environment"] = self._summary_envs
+        base_data["environment"] = self._summary_envs.result.build_dict()
 
         # write the json data back to the html element's attribute
         base_data_container["data-jsonblob"] = json.dumps(base_data)
