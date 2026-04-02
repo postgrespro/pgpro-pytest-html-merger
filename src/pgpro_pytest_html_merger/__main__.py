@@ -140,7 +140,8 @@ class PytestReportEnvPropID:
         """
         Comparison logic for sorting:
         1. Compare part1
-        2. If part1 is equal, compare part2 (treating None as smaller than any int)
+        2. If part1 is equal, compare part2 (treating None as smaller
+           than any int)
         """
         assert type(other) is PytestReportEnvPropID
 
@@ -173,7 +174,12 @@ class PytestReportEnvProp:
     _id: PytestReportEnvPropID
     _value: typing.Any
 
-    def __init__(self, name: str, id: PytestReportEnvPropID, value: typing.Any):
+    def __init__(
+        self,
+        name: str,
+        id: PytestReportEnvPropID,
+        value: typing.Any,
+    ):
         assert type(name) is str
         assert type(id) is PytestReportEnvPropID
         assert value is not None
@@ -228,7 +234,9 @@ class PytestReportEnvPropList:
             assert type(n) is str
 
             if v is None:
-                raise RuntimeError(ErrMsgGenerator.gen_msg__env_prop_is_none(n))
+                raise RuntimeError(
+                    ErrMsgGenerator.gen_msg__env_prop_is_none(n),
+                )
 
             if type(v) is str:
                 v2 = v
@@ -275,21 +283,25 @@ class PytestReportEnvPropList:
     def helper__build_ids(self, ctx: tagBuildCtx) -> None:
         assert type(ctx) is __class__.tagBuildCtx
         for prop in self.m_items:
-            # For stable numbering, we'll sort them in build_dict before assigning numbers
+            # For stable numbering, we'll sort them in build_dict
+            # before assigning numbers
             ctx.ids[prop.id] = 0
             if type(prop.value) is PytestReportEnvPropList:
                 prop.value.helper__build_ids(ctx)
             continue
         return
 
-    def helper__build_dict(self, ctx: tagBuildCtx) -> typing.Dict[str, typing.Any]:
+    def helper__build_dict(
+        self,
+        ctx: tagBuildCtx,
+    ) -> typing.Dict[str, typing.Any]:
         assert type(ctx) is __class__.tagBuildCtx
 
         names: typing.Dict[str, typing.Set[PytestReportEnvPropID]] = {}
 
         for prop in self.m_items:
             assert type(prop) is PytestReportEnvProp
-            entries: typing.Set[PytestReportEnvPropID] = names.get(prop.name, set())
+            entries = names.get(prop.name, set())
             assert type(entries) is set
             entries.add(prop.id)
             names[prop.name] = entries
@@ -324,7 +336,9 @@ class PytestReportEnvPropList:
         return result
 
     @staticmethod
-    def helper__parse_identity(text: str) -> typing.Tuple[str, typing.Optional[int]]:
+    def helper__parse_identity(
+        text: str,
+    ) -> typing.Tuple[str, typing.Optional[int]]:
         """
         Parses a string in the format 'name {123}'.
         The id must be a numeric value.
@@ -335,7 +349,7 @@ class PytestReportEnvPropList:
         # ^(?P<name>.+?)  - Capture 'name' (non-greedy)
         # \s*             - Optional whitespace before the bracket
         # \{              - Open bracket
-        # \s*(?P<id>\d+)\s* - Capture only digits, allowing optional spaces inside {}
+        # \s*(?P<id>\d+)\s* - Capture only digits and optional spaces inside {}
         # \}              - Close bracket
         # $               - End of string
         pattern = r"^(?P<name>.+?)\s*\{\s*(?P<id>\d+)\s*\}$"
@@ -362,7 +376,10 @@ class PytestReportEnvPropList:
 
 class PytestReportEnvAggregator:
     _result: PytestReportEnvPropList
-    _index: typing.Dict[str, typing.List[typing.Tuple[int, PytestReportEnvProp]]]
+    _index: typing.Dict[
+        str,
+        typing.List[typing.Tuple[int, PytestReportEnvProp]],
+    ]
 
     # --------------------------------------------------------------------
     def __init__(self):
@@ -423,8 +440,11 @@ class PytestReportEnvAggregator:
                     sub_aggregator = PytestReportEnvAggregator()
                     sub_aggregator.add(cp.value)
                     sub_aggregator.add(prop.value)
-                    # This updates the object both in index and in _result.m_items
-                    new_p = PytestReportEnvProp(cp.name, cp.id, sub_aggregator._result)
+                    new_p = PytestReportEnvProp(
+                        cp.name,
+                        cp.id,
+                        sub_aggregator._result,
+                    )
                     entries[i_entry] = (entry[0], new_p)
                     self._result.m_items[entry[0]] = new_p
                     return
