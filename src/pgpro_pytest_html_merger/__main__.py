@@ -75,14 +75,6 @@ def parse_arguments():
 
 class ErrMsgGenerator:
     @staticmethod
-    def gen_msg__env_prop_is_none(name: str):
-        assert type(name) is str
-        return "Env property [{}] is None.".format(
-            name,
-        )
-
-    # --------------------------------------------------------------------
-    @staticmethod
     def gen_msg__unsupported_env_prop_type(name: str, type_name: str):
         assert type(name) is str
         assert type(type_name) is str
@@ -182,7 +174,6 @@ class PytestReportEnvProp:
     ):
         assert type(name) is str
         assert type(id) is PytestReportEnvPropID
-        assert value is not None
         assert __class__.helper__is_valid_value_type(
             value
         ), "name: {}, type: {}".format(name, type(value).__name__)
@@ -208,6 +199,8 @@ class PytestReportEnvProp:
 
     @staticmethod
     def helper__is_valid_value_type(value: typing.Any):
+        if value is None:
+            return True
         if type(value) is str:
             return True
         if type(value) is PytestReportEnvPropList:
@@ -234,11 +227,8 @@ class PytestReportEnvPropList:
             assert type(n) is str
 
             if v is None:
-                raise RuntimeError(
-                    ErrMsgGenerator.gen_msg__env_prop_is_none(n),
-                )
-
-            if type(v) is str:
+                v2 = v
+            elif type(v) is str:
                 v2 = v
             elif type(v) is dict:
                 v2 = PytestReportEnvPropList.create(report_id, v)
@@ -249,7 +239,6 @@ class PytestReportEnvPropList:
                         type(v).__name__,
                     )
                 )
-            assert v2 is not None
             name, id_part2 = __class__.helper__parse_identity(n)
 
             propList.helper_add(
@@ -317,7 +306,9 @@ class PytestReportEnvPropList:
             else:
                 name = "{} {{{}}}".format(prop.name, ctx.ids[prop.id])
 
-            if type(prop.value) is str:
+            if prop.value is None:
+                value = prop.value
+            elif type(prop.value) is str:
                 value = prop.value
             elif type(prop.value) is PytestReportEnvPropList:
                 value = prop.value.helper__build_dict(ctx)
@@ -329,7 +320,6 @@ class PytestReportEnvPropList:
                     )
                 )
 
-            assert value is not None
             result[name] = value
             continue
 
@@ -425,6 +415,12 @@ class PytestReportEnvAggregator:
             assert type(cp) is PytestReportEnvProp
 
             assert self._result.m_items[entry[0]] is cp
+
+            # Case 0: None
+            if prop.value is None:
+                if cp.value is None:
+                    return  # Already exists, skip
+                continue
 
             # Case 1: Simple strings
             if type(prop.value) is str:

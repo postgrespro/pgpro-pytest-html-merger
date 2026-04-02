@@ -26,6 +26,15 @@ class TestSet004__pytest_report_env_prop_list_create:
 
     # --------------------------------------------------------------------
     sm_Data004Ok: typing.List[tagData004] = [
+        # 0. None
+        tagData004(
+            sign="none value",
+            report_id=11,
+            env_dict={"Branch": None},
+            expected_list=prog.PytestReportEnvPropList().helper_add(
+                "Branch", prog.PytestReportEnvPropID(11, None), None
+            ),
+        ),
         # 1. Simple flat dictionary
         tagData004(
             sign="simple_flat",

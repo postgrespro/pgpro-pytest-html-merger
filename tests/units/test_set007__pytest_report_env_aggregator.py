@@ -93,6 +93,38 @@ class TestSet007__pytest_report_env_aggregator:
                 ),
             ),
         ),
+        # None + None
+        tagData007(
+            sign="none_and_none",
+            input_dicts=[{"Prop": None}, {"Prop": None}],
+            expected_list=prog.PytestReportEnvPropList().helper_add(
+                "Prop", prog.PytestReportEnvPropID(1, None), None
+            ),
+        ),
+        # None + None + ""
+        tagData007(
+            sign="none_and_none_and_empty",
+            input_dicts=[{"Prop": None}, {"Prop": None}, {"Prop": ""}],
+            expected_list=prog.PytestReportEnvPropList()
+            .helper_add("Prop", prog.PytestReportEnvPropID(1, None), None)
+            .helper_add("Prop", prog.PytestReportEnvPropID(3, None), ""),
+        ),
+        # None + dict
+        tagData007(
+            sign="none_and_dict",
+            input_dicts=[{"Prop": None}, {"Prop": {"Level": "1"}}],
+            expected_list=prog.PytestReportEnvPropList()
+            .helper_add("Prop", prog.PytestReportEnvPropID(1, None), None)
+            .helper_add(
+                "Prop",
+                prog.PytestReportEnvPropID(2, None),
+                prog.PytestReportEnvPropList().helper_add(
+                    "Level",
+                    prog.PytestReportEnvPropID(2, None),
+                    "1",
+                ),
+            ),
+        ),
     ]
 
     # --------------------------------------------------------------------

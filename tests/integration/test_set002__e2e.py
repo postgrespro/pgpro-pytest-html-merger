@@ -969,6 +969,7 @@ from pytest_metadata.plugin import metadata_key as pytest_metadata_key
 def test_a(request):
     test_report_metadata = request.config.stash[pytest_metadata_key]
     test_report_metadata['Packages'] = {'pytest': '8.3.4', 'pluggy': '1.5.0'}
+    test_report_metadata['Exec Params'] = {'Branch': None}
     test_report_metadata['PgProBackup'] = {'Binary': 'pg_probackup3', 'Version': '3.3.0'}
     assert True
 """
@@ -1005,6 +1006,9 @@ def test_b(request):
         assert "pg_probackup3" in content
         assert "Src Commit ID" in content
         assert "70fa46d35b12a" in content
+
+        assert "Exec Params" in content
+        assert "Branch" in content
 
     finally:
         pass
