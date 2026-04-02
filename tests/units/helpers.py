@@ -18,7 +18,9 @@ class Helper:
             assert a_item.name == e_item.name
             assert a_item.id == e_item.id
 
-            if type(e_item.value) is prog.PytestReportEnvPropList:
+            if e_item.value is None:
+                assert a_item.value is None
+            elif type(e_item.value) is prog.PytestReportEnvPropList:
                 # If value is a list, recurse
                 assert type(a_item.value) is prog.PytestReportEnvPropList
                 __class__.compare_prop_lists(a_item.value, e_item.value)

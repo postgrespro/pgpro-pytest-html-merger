@@ -18,15 +18,6 @@ class TestSet005__pytest_report_env_prop_list_create_errors:
 
     # We use types that are NOT str or dict to trigger the RuntimeError
     sm_Data005Fail: typing.List[tagData005] = [
-        # 0. None value (Unsupported)
-        tagData005(
-            sign="none_value",
-            report_id=1,
-            invalid_env={"Timeout": None},
-            expected_error_msg=prog.ErrMsgGenerator.gen_msg__env_prop_is_none(
-                "Timeout",
-            ),
-        ),
         # 1. Integer value (Unsupported)
         tagData005(
             sign="int_value",
