@@ -4,20 +4,42 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pgpro-pytest-html-merger"
-version = "0.2.0"
+version = "0.3.0"
 description = "A professional tool to merge multiple pytest-html reports into a single one with consistent metadata"
 readme = "README.md"
-requires-python = ">=3.8"
 license = "MIT"
 
 authors = [
     {name = "Postgres Professional", email = "info@postgrespro.ru"}
 ]
 
+requires-python = ">=3.8"
+
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Software Development :: Quality Assurance",
+    "Framework :: Pytest",
+]
+
 dependencies = [
     "beautifulsoup4>=4.11.1",
     "packaging>=21.0",
 ]
+
+[project.urls]
+"HomePage" = "https://github.com/postgrespro/pgpro-pytest-html-merger"
 
 [project.scripts]
 pgpro-pytest-html-merger = "pgpro_pytest_html_merger.__main__:cli"
