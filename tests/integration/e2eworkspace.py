@@ -5,6 +5,8 @@ import shutil
 import tempfile
 import subprocess
 import logging
+import typing
+
 from pathlib import Path
 
 # /////////////////////////////////////////////////////////////////////////////
@@ -22,7 +24,14 @@ class E2EWorkspace:
         if self.root.exists():
             shutil.rmtree(self.root)
 
-    def generate_report(self, name: str, test_code: str, metadata: dict = None):
+    def generate_report(
+        self,
+        name: str,
+        test_code: str,
+        metadata: typing.Optional[
+            typing.Union[typing.Dict[str, typing.Any], str]
+        ] = None,
+    ) -> str:
         test_file = self.root / f"test_{name}.py"
         test_file.write_text(test_code)
 
@@ -42,9 +51,17 @@ class E2EWorkspace:
             str(test_file),
         ]
 
-        if metadata:
+        if metadata is None:
+            pass
+        elif type(metadata) is str:
+            cmd.extend(["--metadata-from-json", metadata])
+        elif type(metadata) is dict:
             for k, v in metadata.items():
                 cmd.extend(["--metadata", str(k), str(v)])
+        else:
+            raise RuntimeError(
+                "Unsupported metadata type [{}].".format(type(metadata).__name__)
+            )
 
         result = subprocess.run(cmd, capture_output=True, text=True)
 

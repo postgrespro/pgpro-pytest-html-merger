@@ -4,6 +4,7 @@ import dataclasses
 import typing
 import bs4
 import re
+import json
 
 from packaging.version import Version
 
@@ -953,7 +954,7 @@ def test_e2e_006__merge_conflicting_metadata():
 
 
 # ------------------------------------------------------------------------
-def test_e2e_007__merge_nested_metadata_extension():
+def test_e2e_007__merge_nested_metadata_extension__via_tests():
     """
     Verify that nested dictionaries (like PgProBackup or Packages)
     are extended, not overwritten, when merging two reports.
@@ -984,6 +985,72 @@ def test_b(request):
     assert True
 """
         ws.generate_report("run_b", code_b)
+
+        # 3. Merge them
+        output_html = ws.root / "merged_complex.html"
+        result = ws.run_merger(["-i", str(ws.reports_dir), "-o", str(output_html)])
+
+        # 4. Assertions
+        assert result.returncode == 0
+        content = output_html.read_text()
+
+        # Check Packages: must contain all three!
+        assert "pytest" in content
+        assert "8.3.4" in content
+        assert "testgres" in content
+        assert "1.10.0" in content
+
+        # Check PgProBackup: must be merged into one block
+        assert "Binary" in content
+        assert "pg_probackup3" in content
+        assert "Src Commit ID" in content
+        assert "70fa46d35b12a" in content
+
+    finally:
+        pass
+
+    ws.cleanup()
+    return
+
+
+# ------------------------------------------------------------------------
+def test_e2e_008__merge_nested_metadata_extension__via_cmdline():
+    """
+    Verify that nested dictionaries (like PgProBackup or Packages)
+    are extended, not overwritten, when merging two reports.
+    """
+    ws = E2EWorkspace(prefix="e2e_nested_merge_")
+    try:
+        # 1. Report from Test A: Basic environment and some packages
+        # We use a pytest_configure hook to inject complex dicts into metadata
+        metadata_a = {
+            "Packages": {"pytest": "8.3.4", "pluggy": "1.5.0"},
+            "PgProBackup": {"Binary": "pg_probackup3", "Version": "3.3.0"},
+        }
+        code_a = """
+def test_a(request):
+    assert True
+"""
+        ws.generate_report(
+            "run_a",
+            code_a,
+            metadata=json.dumps(metadata_a),
+        )
+
+        # 2. Report from Test B: Adding 'testgres' and extra backup info
+        code_b = """
+def test_b(request):
+    assert True
+"""
+        metadata_b = {
+            "Packages": {"testgres": "1.10.0"},
+            "PgProBackup": {"Src Commit ID": "70fa46d35b12a"},
+        }
+        ws.generate_report(
+            "run_b",
+            code_b,
+            metadata=json.dumps(metadata_b),
+        )
 
         # 3. Merge them
         output_html = ws.root / "merged_complex.html"
