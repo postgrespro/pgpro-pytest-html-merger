@@ -1083,4 +1083,71 @@ def test_b(request):
     return
 
 
+# ------------------------------------------------------------------------
+def test_e2e_009__re_merging_stability():
+    """
+    Verify that re-merging an already merged report preserves
+    existing {id} suffixes and doesn't cause index drifting.
+
+    Scenario:
+    1. Merge Report A and Report B -> Get 'Python {1}' and 'Python {2}'.
+    2. Merge the result with a new Report C.
+    3. Check that 'Python {1}' and 'Python {2}' are still there and
+       the new one becomes 'Python {3}'.
+    """
+    ws = E2EWorkspace(prefix="e2e_remerge_")
+    try:
+        # Phase 1: Create two initial reports
+        ws.generate_report("run_1", "def test_1(): pass", metadata={"Python": "3.8"})
+        ws.generate_report("run_2", "def test_2(): pass", metadata={"Python": "3.9"})
+
+        # First Merge
+        mid_html = ws.root / "mid_merged.html"
+        result = ws.run_merger(["-i", str(ws.reports_dir), "-o", str(mid_html)])
+
+        assert result.returncode == 0
+        assert mid_html.exists()
+
+        mid_content = mid_html.read_text()
+        assert "Python {1}" in mid_content  # 3.8
+        assert "Python {2}" in mid_content  # 3.9
+
+        # Phase 2: Create a third report
+        # We'll put it in a separate subfolder to avoid picking up run_1/run_2 again
+        extra_dir = ws.root / "extra"
+        extra_dir.mkdir()
+        ws.reports_dir = extra_dir  # Redirect generate_report to new dir
+        ws.generate_report("run_3", "def test_3(): pass", metadata={"Python": "3.10"})
+
+        # Final Merge: [mid_merged.html] + [run_3.html]
+        final_html = ws.root / "final_merged.html"
+        # We pass the previously merged file as an input as well
+        result = ws.run_merger(
+            ["-i", str(extra_dir), str(mid_html), "-o", str(final_html)]
+        )
+
+        assert result.returncode == 0
+        assert final_html.exists()
+
+        final_content = final_html.read_text()
+
+        # Phase 3: Critical Validation
+        # 1. Existing IDs must be preserved thanks to our __lt__ priority
+        assert "Python {1}" in final_content
+        assert "3.8" in final_content
+
+        assert "Python {2}" in final_content
+        assert "3.9" in final_content
+
+        # 2. The new entry must get the next index
+        assert "Python {3}" in final_content
+        assert "3.10" in final_content
+
+        # 3. Summary check
+        assert "3 tests took" in final_content
+
+    finally:
+        ws.cleanup()
+
+
 # //////////////////////////////////////////////////////////////////////////////

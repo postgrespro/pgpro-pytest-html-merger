@@ -124,29 +124,31 @@ class PytestReportEnvPropID:
 
     def __eq__(self, other: typing.Any) -> bool:
         """Check equality: both parts must match"""
+        # assert type(other) is PytestReportEnvPropID
         if not isinstance(other, PytestReportEnvPropID):
             return False
         return self.part1 == other.part1 and self.part2 == other.part2
 
     def __lt__(self, other: PytestReportEnvPropID) -> bool:
-        """
-        Comparison logic for sorting:
-        1. Compare part1
-        2. If part1 is equal, compare part2 (treating None as smaller
-           than any int)
-        """
         assert type(other) is PytestReportEnvPropID
 
+        # Logic: Compound IDs (already merged) should come BEFORE simple IDs
+        self_has_p2 = self.part2 is not None
+        other_has_p2 = other.part2 is not None
+
+        if self_has_p2 != other_has_p2:
+            # The one WITH part2 is "smaller" (comes first)
+            return self_has_p2  # True if self has it, meaning self < other
+
+        # If both have part2 or both don't:
         if self.part1 != other.part1:
             return self.part1 < other.part1
 
-        # Handle None in part2 for sorting
-        if self.part2 is None and other.part2 is not None:
+        # Fallback to part2 comparison
+        if self.part2 is None:
+            return False  # already handled above
+        if other.part2 is None:
             return True
-        if self.part2 is not None and other.part2 is None:
-            return False
-        if self.part2 is None and other.part2 is None:
-            return False
 
         assert type(self.part2) is int
         assert type(other.part2) is int

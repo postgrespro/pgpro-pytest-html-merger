@@ -65,41 +65,41 @@ class TestSet006__pytest_report_env_prop_id:
 
     # --------------------------------------------------------------------
     # 3. Test Sorting (__lt__) - This is the "concrete" part
-    def test_006_sorting(self):
-        # Unsorted list with various combinations
-        p1 = prog.PytestReportEnvPropID(10, 5)
-        p2 = prog.PytestReportEnvPropID(5, 100)
-        p3 = prog.PytestReportEnvPropID(10, None)
-        p4 = prog.PytestReportEnvPropID(5, 10)
-        p5 = prog.PytestReportEnvPropID(5, None)
+    def test_006_sorting_priority(self):
+        # Various combinations for our "mega-project"
+        p1 = prog.PytestReportEnvPropID(10, 5)  # Merged
+        p2 = prog.PytestReportEnvPropID(5, 100)  # Merged
+        p3 = prog.PytestReportEnvPropID(10, None)  # Simple
+        p4 = prog.PytestReportEnvPropID(5, 10)  # Merged
+        p5 = prog.PytestReportEnvPropID(5, None)  # Simple
 
-        unsorted = [
-            p1,
-            p2,
-            p3,
-            p4,
-            p5,
-        ]
+        unsorted = [p1, p2, p3, p4, p5]
 
-        # Expected order:
-        # 1. part1=5, part2=None
-        # 2. part1=5, part2=10
-        # 3. part1=5, part2=100
-        # 4. part1=10, part2=None
-        # 5. part1=10, part2=5
+        # NEW Expected order (Priority to part2 != None):
+        # 1. part1=5,  part2=10  (Has p2, smallest p1)
+        # 2. part1=5,  part2=100 (Has p2, next p1/p2)
+        # 3. part1=10, part2=5   (Has p2)
+        # 4. part1=5,  part2=None (No p2, but smaller p1)
+        # 5. part1=10, part2=None (No p2)
+
         sorted_list = sorted(unsorted)
 
-        assert sorted_list[0] is p5
-        assert sorted_list[1] is p4
-        assert sorted_list[2] is p2
-        assert sorted_list[3] is p3
-        assert sorted_list[4] is p1
+        # Verification by objects
+        assert sorted_list[0] is p4
+        assert sorted_list[1] is p2
+        assert sorted_list[2] is p1
+        assert sorted_list[3] is p5
+        assert sorted_list[4] is p3
 
-        assert sorted_list[0].part1 == 5 and sorted_list[0].part2 is None
-        assert sorted_list[1].part1 == 5 and sorted_list[1].part2 == 10
-        assert sorted_list[2].part1 == 5 and sorted_list[2].part2 == 100
-        assert sorted_list[3].part1 == 10 and sorted_list[3].part2 is None
-        assert sorted_list[4].part1 == 10 and sorted_list[4].part2 == 5
+        # Verification by values for CI clarity
+        # Group 1: Merged (p2 is not None)
+        assert sorted_list[0].part1 == 5 and sorted_list[0].part2 == 10
+        assert sorted_list[1].part1 == 5 and sorted_list[1].part2 == 100
+        assert sorted_list[2].part1 == 10 and sorted_list[2].part2 == 5
+
+        # Group 2: Simple (p2 is None)
+        assert sorted_list[3].part1 == 5 and sorted_list[3].part2 is None
+        assert sorted_list[4].part1 == 10 and sorted_list[4].part2 is None
         return
 
 
